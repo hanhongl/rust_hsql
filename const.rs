@@ -1,0 +1,2 @@
+const PAGESIZE: u16 = 4096;  
+const MAXFRAMESIZE: u16 = 100;
