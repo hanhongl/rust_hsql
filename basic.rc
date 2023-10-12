@@ -1,0 +1,196 @@
+//用于where的判断 分别为小于，小于等于，等于，大于等于，大于，不等于
+enum Where{
+    Less,  
+    LessOrEqual,  
+    Equal,  
+    GreaterOrEqual,  
+    Greater,  
+    NotEqual,
+}
+
+//一个struct存放它的一条信息的类型和值
+//用一个strunt嵌套一个union实现多种类型的转换
+//type的类型：-1：int,0:float,1-255:string(数值为字符串的长度+1),注意使用时对Value的选择！
+pub struct Data{
+    type_n : i32,
+    datai : i32,
+    dataf : f32,
+    datas : String,
+}
+
+//Where存放一组判断语句
+pub struct WhereStu{
+    data : Data, //数据
+    relation_character : Where, //关系
+}
+
+//在确定类型时，慎用str.size()+1来决定str的type的值，一张表最多32个attribute
+pub struct Attribute{
+    num : i32,  //存放table的属性数
+    name : Vec<String>,  //存放每个属性的名字
+    type_v : Vec<i16>,  //存放每个属性的类型，-1：int,0:float,1~255:string的长度+1
+    unique : Vec<bool>,  //判断每个属性是否unique，是为true
+    primary_key : i16,  //判断是否存在主键,-1为不存在，其他则为主键的所在位置
+    has_index : Vec<bool>, //判断是否存在索引
+}
+
+//索引管理，一张表最多只能有10个index
+pub struct Index{
+    num : i32,  //index的总数
+    location : Vec<i16>,  //每个index在Attribute的name数组中是第几个
+    indexname : Vec<String>,  //每个index的名字
+}
+
+impl Index {  
+    fn new() -> Index {  
+        Index {  
+            num: 0,  
+            location: Vec::new(),  
+            indexname: Vec::new(),  
+        }  
+    }  
+}
+
+pub struct Tuple {  
+    data: Vec<Data>,  //存储元组里的每个数据的信息  
+    is_deleted: bool,  
+}  
+
+impl Tuple {  
+    fn new(data : Vec<Data>) -> Self {  
+        Tuple {  
+            data,  
+            is_deleted: false,  
+        }
+    }  
+  
+    pub fn add_data(&mut self, data_in: Data) {  
+        self.data.push(data_in);  //新增元组数据  
+    }  
+  
+    pub fn get_data(&self) -> &Vec<Data> {  
+        &self.data  
+    }  
+  
+    pub fn get_size(&self) -> usize {  
+        self.data.len()  //返回元组的数据数量  
+    }  
+  
+    pub fn is_deleted(&self) -> bool {  
+        self.is_deleted  
+    }  
+  
+    pub fn set_deleted(&mut self) {  
+        self.is_deleted = true;  //设置元组为已删除  
+    }  
+
+    pub fn show_tuple(&self) {
+        for i in 0..self.get_size() {
+            if self.data[i].type_n == -1 {
+                println!("{}", self.data[i].datai);
+            }
+            else if self.data[i].type_n == 0 {
+                println!("{}", self.data[i].dataf);
+            }
+            else {
+                println!("{}", self.data[i].datas);
+            }
+        }
+    }
+}
+
+pub struct Table {  
+    title: String,  //表名  
+    tuple: Vec<Tuple>,  //存放所有的元组  
+    index: Index,  //表的索引信息  
+    attr: Attribute,  //数据的类型  
+}  
+  
+impl Table {  
+    //构造函数  
+    fn new(title: String, attr: Attribute) -> Table {  
+        Table {  
+            title,  
+            tuple: Vec::new(),  
+            index : Index::new(), 
+            attr,  
+        }  
+    }  
+  
+    //插入索引，输入要建立索引的Attribute的编号，以及索引的名字，成功返回1失败返回0  
+    pub fn set_index(&mut self, index_n: i16, index_name: String) -> i32 {  
+        //具体实现根据Index的实现而定  
+        let mut tmpIndex : i32 = 0;
+        for i in 0..self.index.num {
+            if index_n == self.index.location[i as usize] {
+                println!("Illegal Set Index: The index has been in the table.");
+                return 0;
+            }
+            tmpIndex = i;
+        }
+        for i in 0..self.index.num {
+            if index_name == self.index.indexname[i as usize] {
+                println!("Illegal Set Index: The name has been used.");
+                return 0;
+            }
+            tmpIndex = i;
+        }
+        self.index.location[self.index.num as usize] = index_n;
+        self.index.indexname[self.index.num as usize] = index_name;
+        self.index.num += 1;
+        return 1;
+    }  
+  
+    //删除索引，输入建立的索引的名字，成功返回1失败返回0  
+    pub fn drop_index(&mut self, index_name: String) -> i32 {  
+        //具体实现根据Index的实现而定  
+        let mut tmpIndex : i32 = 0;
+        for i in 0..self.index.num {
+            if index_name == self.index.indexname[i as usize] {
+                break;
+            }
+            tmpIndex = i;
+        } 
+        if tmpIndex == self.index.num {
+            println!("Illegal Drop Index: No such a index in the table.");
+            return 0;
+        }
+        let n = self.index.num - 1;
+        self.index.indexname[tmpIndex as usize] = self.index.indexname[n as usize].clone();
+        self.index.location[tmpIndex as usize] = self.index.location[n as usize].clone();
+        self.index.num -= 1;
+        return 1;
+    }  
+    
+    pub fn get_title(&self) -> String {
+        return self.title.clone();
+    }
+
+    //显示table的部分数据  
+    pub fn show_table(&self) {  
+        //具体实现根据Tuple和Attribute的实现而定  
+        for i in 0..self.attr.num {
+            println!("{}", self.attr.name[i as usize]);
+        }
+        for i in 0..self.tuple.len() {
+            self.tuple[i as usize].show_tuple();
+        }
+    }  
+  
+    //显示table的部分数据  
+    pub fn show_table_with_limit(&self, limit: i32) {  
+        //具体实现根据Tuple的实现而定  
+        for i in 0..self.attr.num {
+            println!("{}", self.attr.name[i as usize]);
+        }
+        for i in 0..limit {
+            self.tuple[i as usize].show_tuple();
+        }
+    }  
+}
+
+fn main()
+{
+    
+    println!("123");
+}
